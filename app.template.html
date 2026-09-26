@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0E1622">
+<title>LoL predictor</title>
+<style>
+  :root{--bg:#0E1622;--panel:#17202E;--panel2:#1F2A3B;--line:#2E3C52;--ink:#F3EFE9;--mute:#A79D92;--a:#7FB7E6;--b:#E8C46A;--ok:#7DC862;--warn:#F0B646;--bad:#E0625E}
+  *{box-sizing:border-box}html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;max-width:640px;margin:0 auto;padding:18px 14px 70px;-webkit-text-size-adjust:100%}
+  h1{font-size:24px;margin:0 0 2px}.sub{color:var(--mute);font-size:13px;margin:0 0 14px}
+  nav{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:0 0 14px}
+  nav button{background:var(--panel);border:1px solid var(--line);color:var(--mute);border-radius:8px;padding:9px 4px;font:inherit;font-size:13px}
+  nav button[aria-pressed="true"]{background:var(--panel2);color:var(--ink);border-color:var(--b)}
+  .view{display:none}.view.on{display:block}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:10px}.card h2{font-size:14px;margin:0 0 10px;color:var(--mute);font-weight:600}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+  select,button.p,button.q,input{font:inherit}select,input{background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:8px;width:100%}
+  button.p{font-weight:600;background:var(--b);color:#1a1606;border:0;border-radius:8px;padding:11px;width:100%}button.q{background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px;width:100%;font-size:13px}button:disabled{opacity:.45}
+  #log{font:12px/1.55 ui-monospace,Menlo,monospace;color:var(--mute);white-space:pre-wrap;margin-top:8px}.bad{color:var(--bad)}.ok{color:var(--ok)}
+  table.sum{width:100%;border-collapse:collapse;font-size:13px}table.sum td,table.sum th{padding:6px 4px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}table.sum td.n{font:600 12.5px ui-monospace,Menlo,monospace;text-align:right;white-space:nowrap}table.sum th{color:var(--mute);font-weight:600;font-size:11px;text-transform:uppercase}
+  .g{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:12px;margin-bottom:9px}
+  .g .t{font-weight:600;font-size:16px;line-height:1.25}.g .t .a{color:var(--a)}.g .t .b{color:var(--b)}.g .meta{color:var(--mute);font-size:12px;margin:3px 0 10px}
+  .bar{height:9px;border-radius:5px;background:var(--b);overflow:hidden;margin:0 0 5px}.bar i{display:block;height:100%;background:var(--a)}
+  .pcts{display:flex;justify-content:space-between;font:600 15px/1 ui-monospace,Menlo,monospace;margin-bottom:10px}
+  .verdict{font-size:14px;padding:8px 10px;border-radius:6px;border:1px solid var(--line);margin-bottom:8px}.verdict b{font-size:15px}.verdict.on{color:var(--ok);border-color:rgba(125,200,98,.45);background:rgba(125,200,98,.1)}.verdict.some{color:var(--ink)}.verdict.no{color:var(--mute)}
+  .warnbox{font-size:12.5px;color:var(--warn);border:1px solid rgba(240,182,70,.4);border-radius:6px;padding:6px 8px;margin-bottom:8px}.warnbox.red{color:var(--bad);border-color:rgba(224,98,94,.45)}
+  .odds{display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:center;margin-bottom:8px}.odds input{padding:6px;font-size:13px;font-family:ui-monospace,Menlo,monospace}.odds small{color:var(--mute);font-size:11px}
+  details{border-top:1px solid var(--line);padding-top:8px;margin-top:4px}summary{cursor:pointer;color:var(--mute);font-size:13px}
+  .ros{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;font-size:12px}.ros h4{margin:0 0 4px;font-size:12px;color:var(--mute);font-weight:600}.ros .pl{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid var(--line)}.ros .pl b{font-weight:600}.ros .pl span{font-family:ui-monospace,Menlo,monospace;color:var(--mute)}
+  .tag{display:inline-block;font-size:10px;padding:1px 5px;border-radius:4px;margin-left:4px;vertical-align:middle}.tag.in{background:rgba(125,200,98,.2);color:var(--ok)}.tag.out{background:rgba(224,98,94,.2);color:var(--bad)}.tag.new{background:rgba(240,182,70,.2);color:var(--warn)}
+  .coh{font-size:11.5px;color:var(--mute);margin-top:5px}
+  dl.f{margin:8px 0 0;display:grid;grid-template-columns:auto 1fr 1fr;gap:4px 10px;font-size:12.5px}dl.f dt{color:var(--mute)}dl.f dd{margin:0;font-family:ui-monospace,Menlo,monospace}dl.f .hd{color:var(--mute);font-size:11px;text-transform:uppercase}
+  dl.s{margin:0}dl.s div{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)}dl.s dt{color:var(--mute);font-size:13px}dl.s dd{margin:0;font:600 16px/1 ui-monospace,Menlo,monospace}
+  .empty{color:var(--mute);font-size:13px}
+</style>
+</head>
+<body>
+<h1>LoL predictor</h1>
+<p class="sub">Trained on <span id="mMaps"></span> maps from <span id="mMatches"></span> matches. Holdout accuracy <span id="mAcc"></span> per game. Ratings and rosters as of <span id="mAsOf"></span> <span id="mSrc"></span></p>
+<nav><button data-v="games" aria-pressed="true">Matches</button><button data-v="score" aria-pressed="false">Scoreboard</button><button data-v="any" aria-pressed="false">Any two</button></nav>
+
+<section class="view on" id="v-games">
+  <div class="card">
+    <div class="row"><select id="when"><option value="today" selected>Today</option><option value="yday">Yesterday</option><option value="7d">Next 7 days</option></select><select id="tierSel"><option value="0">All events</option><option value="1">Tier S/A only</option><option value="2">Tier S/A/B</option></select></div>
+    <button class="p" id="go">Refresh market prices</button>
+    <label class="sub" style="display:block;margin:0"><input type="checkbox" id="showAll"> Show matches with no market price too</label>
+    <div id="log"></div>
+  </div>
+  <div id="cards"></div>
+</section>
+
+<section class="view" id="v-any">
+  <div class="card"><h2>Compare any two teams (not on the schedule)</h2>
+    <div class="row"><div><small class="sub" style="display:block;margin:0 0 3px">Team A</small><select id="anyA"></select></div><div><small class="sub" style="display:block;margin:0 0 3px">Team B</small><select id="anyB"></select></div></div>
+    <div class="row"><select id="anyBo"><option value="1">Bo1</option><option value="3" selected>Bo3</option><option value="5">Bo5</option></select><select id="anyTier"><option value="1">Tier S/A</option><option value="2">Tier A</option><option value="3" selected>Tier B</option><option value="4">Tier C</option><option value="5">Tier D</option></select></div>
+    <button class="p" id="anyGo">Compare</button>
+    <p class="sub" style="margin:8px 0 0">Uses each team's last-known lineup. Enter the bookmaker odds on the card to get the edge and stake.</p></div>
+  <div id="anyCards"></div>
+</section>
+
+<section class="view" id="v-score">
+  <div class="card"><h2>Model scorecard (every match you priced)</h2><dl class="s" id="score"><div><dt>Nothing settled yet</dt><dd>&mdash;</dd></div></dl><p class="sub" style="margin:8px 0 0">Results are settled from the trainer's match list, so rebuilding the app (trainer + build) also settles your picks.</p></div>
+  <div class="card"><h2>How a prediction is made</h2><p class="sub" style="margin:0">Every team has an Elo (entry rating depends on the tier of events it plays, tier-1 results count more, shorter stomps count more than long grinds, idle teams regress), and every player has an Elo. The model also uses strength of schedule, average tier played, last-10 form, head-to-head, rest, experience, and how much of the expected lineup played the team's last match. A logistic model fitted on past pro games turns that into a single-game win probability, which is converted to the series (Bo1/Bo3/Bo5) and then blended with the market price using weights fitted on past matches. The roster panel shows who is expected to play, each player's rank among all rated players, who is in or out since the last match, and how many games this exact five has played together. Stakes are quarter-Kelly on the blended probability, capped at 2u; any edge above 8% is treated as suspicious and capped at 0.5u because a model this accurate does not find 8% edges, stale inputs do.</p></div>
+</section>
+
+<script>
+/* load the published model, with a changing query so the phone never serves yesterday's copy from its cache */
+(function(){ var u="__MODEL_URL__"; if(!u) return; var v=new Date(); var tag=v.getUTCFullYear()+""+(v.getUTCMonth()+1)+""+v.getUTCDate()+""+v.getUTCHours();
+  document.write('<script src="'+u+(u.indexOf("?")<0?"?":"&")+"v="+tag+'" onerror="window.__modelFailed=1"><\/script>'); })();
+</script>
+<script>
+var BAKED = __MODEL_JSON__;
+var M = BAKED;
+(function(){                                   // prefer the published model when it is newer than this build
+  try{
+    var R = window.MODEL_REMOTE;
+    if(R && R.as_of && (!BAKED.as_of || R.as_of >= BAKED.as_of) && R.teams && Object.keys(R.teams).length){ M = R; M.__remote = true; }
+  }catch(e){}
+})();
+var mem={}, LS=(function(){ try{ return window.localStorage; }catch(e){ return null; } })();
+function put(k,v){ try{ LS.setItem(k,JSON.stringify(v)); }catch(e){ mem[k]=v; } } function get(k){ try{ var v=LS.getItem(k); return v?JSON.parse(v):null; }catch(e){ return mem[k]||null; } }
+function keys(p){ var o=[]; try{ for(var i=0;i<LS.length;i++){ var k=LS.key(i); if(k.indexOf(p)===0) o.push(k);} }catch(e){ o=Object.keys(mem).filter(function(k){return k.indexOf(p)===0;}); } return o; }
+var $=function(id){ return document.getElementById(id); };
+$("mMaps").textContent=M.games_used.toLocaleString(); $("mMatches").textContent=M.matches_used.toLocaleString(); $("mAcc").textContent=(M.holdout.accuracy*100).toFixed(1)+"%"; $("mAsOf").textContent=M.as_of;
+(function(){                                   // say plainly where today's numbers came from
+  var age = M.as_of ? Math.round((Date.now()-Date.parse(M.as_of+"T00:00:00Z"))/864e5) : null;
+  var src = M.__remote ? "updated over the internet"
+          : (window.__modelFailed ? "offline copy (could not reach the update server)" : "built-in copy");
+  var el = $("mSrc"); if(el) el.textContent = "\u00b7 " + (age==null?"":(age<=1?"today":age+" days old")+" \u00b7 ") + src;
+})();
+var navBtns=document.querySelectorAll("nav button"); navBtns.forEach(function(b){ b.onclick=function(){ navBtns.forEach(function(x){ x.setAttribute("aria-pressed",x===b); }); document.querySelectorAll(".view").forEach(function(v){ v.classList.toggle("on",v.id==="v-"+b.dataset.v); }); if(b.dataset.v==="score") renderScore(); }; });
+var CFG=get("cfg")||{tier:"0",all:true,when:"today"}; $("tierSel").value=CFG.tier; $("showAll").checked=!!CFG.all; $("when").value=CFG.when||"today";
+$("when").onchange=function(){ CFG.when=this.value; put("cfg",CFG); render(); };
+$("tierSel").onchange=function(){ CFG.tier=this.value; put("cfg",CFG); render(); }; $("showAll").onchange=function(){ CFG.all=this.checked; put("cfg",CFG); render(); };
+
+/* ---------------- math ---------------- */
+function sigmoid(x){ return 1/(1+Math.exp(-x)); } function logitF(p){ p=Math.min(Math.max(p,1e-4),1-1e-4); return Math.log(p/(1-p)); }
+function mean(a){ return a.length?a.reduce(function(s,x){return s+x;},0)/a.length:0; } function pct(x){ return (x*100).toFixed(1)+"%"; }
+/* ---- your edits to a lineup, kept per match so they survive a reload ---- */
+function luGet(k){ try{ return JSON.parse(localStorage.getItem("lol:"+k)||"null"); }catch(e){ return null; } }
+function luSet(k,v){ try{ localStorage.setItem("lol:"+k,JSON.stringify(v)); }catch(e){} }
+function lineupOf(u,side){
+  var r=side==="a"?u.roster_a:u.roster_b;
+  var base=((r&&r.expected)||[]).map(function(p){return p.id;});
+  var ov=luGet("lineup:"+u.id);
+  if(ov&&ov[side]&&ov[side].length===base.length) return ov[side].slice();
+  return base;
+}
+function poolOf(tid){ var T=M.teams[String(tid)]; return (T&&T.pool)||[]; }
+function pName(id){ return (M.player_names&&M.player_names[String(id)])||("player "+id); }
+function pElo(id,fallback){ var v=M.players[String(id)]; return v!=null?v:fallback; }
+
+function seriesProb(p,bo){ if(bo<=1) return p; if(bo===3) return p*p*(3-2*p); if(bo>=5) return p*p*p*(10-15*p+6*p*p); return p; }
+function teamFeats(t,players,now){ var T=M.teams[t]; var r=T.roster||[]; var stab=(r.length&&players.length)?players.filter(function(p){ return r.indexOf(p)>=0; }).length/r.length:0.5;
+  var f=T.form||[]; var form=f.length?mean(f):0.5; var pe=players.length?mean(players.map(function(p){ return M.players[String(p)]!=null?M.players[String(p)]:T.elo; })):T.elo;
+  var rest=Math.min((now-(T.last_ts||now-14*86400))/86400,14); return {elo:T.elo,pe:pe,form:form,stab:stab,rest:rest,games:T.games||0,sos:T.sos!=null?T.sos:T.elo,tier:T.tier_avg!=null?T.tier_avg:3}; }
+function feats(a,b,pa,pb,now,tier){ var A=teamFeats(a,pa,now), B=teamFeats(b,pb,now); var sa=String(a), sb=String(b); var lo=sa<=sb?sa:sb, hi=sa<=sb?sb:sa; var h=M.h2h[lo+"|"+hi]||[]; var h2h=0;
+  if(h.length){ var wa=String(a)===lo?h.reduce(function(s,x){return s+x;},0):h.length-h.reduce(function(s,x){return s+x;},0); h2h=(wa-(h.length-wa))/h.length; }
+  var ed=(A.elo-B.elo)/100, sd=(A.sos-B.sos)/100;
+  var rea=roleElo(pa), reb=roleElo(pb);
+  var roleDiff=(rea!=null&&reb!=null)?((rea-reb)/100):((A.pe-B.pe)/100);
+  var pgA=(M.teams[a]||{}).patch_games||0, pgB=(M.teams[b]||{}).patch_games||0;
+  var siDiff=(standIns(b,pb)-standIns(a,pa))/5;
+  return [ed,(A.pe-B.pe)/100,A.form-B.form,A.stab-B.stab,h2h,(A.rest-B.rest)/7,Math.log1p(A.games)-Math.log1p(B.games),tier===1?1:0,sd,B.tier-A.tier,sd*ed,
+          roleDiff, Math.log1p(pgA)-Math.log1p(pgB), siDiff]; }
+function roleElo(players){
+  if(!players||!players.length||!M.roles) return null;
+  var byrole={}, k=0;
+  for(var i=0;i<players.length;i++){
+    var r=M.roles[String(players[i])];
+    if(r&&byrole[r]==null){ byrole[r]=pElo(players[i],1500); k++; }
+  }
+  if(k<4) return null;
+  var s=0,c=0; for(var q in byrole){ s+=byrole[q]; c++; }
+  return c?s/c:null;
+}
+function standIns(tid,players){
+  var pool=poolOf(tid), g={}, i;
+  for(i=0;i<pool.length;i++) g[String(pool[i].id)]=pool[i].games;
+  var n=0;
+  for(i=0;i<(players||[]).length;i++) if((g[String(players[i])]||0)<3) n++;
+  return n;
+}
+function lin(m,x){ var s=m.b; for(var i=0;i<m.w.length;i++) if(m.sd[i]>0) s+=(x[i]-m.mu[i])/m.sd[i]*m.w[i]; return s; }
+function gameProb(u,now){
+  var pa=lineupOf(u,"a"), pb=lineupOf(u,"b");
+  var p1=sigmoid(lin(M.model,feats(u.a,u.b,pa,pb,now,u.tier)));
+  var p2=sigmoid(lin(M.model,feats(u.b,u.a,pb,pa,now,u.tier)));
+  var raw=(p1+1-p2)/2;                                  // average both orientations so listing order cannot matter
+  var t=M.temp||1;
+  var p=sigmoid(t*logitF(raw));                         // temperature fitted on games the model never trained on
+  var CAP=M.cap||0.85, capped=false;
+  if(p>CAP){ p=CAP; capped=true; } else if(p<1-CAP){ p=1-CAP; capped=true; }
+  return {p:p, raw:raw, capped:capped};
+}
+function gameP(u,now){ return gameProb(u,now).p; }
+function blend(pModel,pMkt){ if(pMkt==null) return {p:pModel,how:"model only, no market"}; if(M.stack) return {p:sigmoid(M.stack.a*logitF(pModel)+M.stack.b*logitF(pMkt)+M.stack.c),how:"stacked model+market"};
+  return {p:sigmoid(0.35*logitF(pModel)+0.65*logitF(pMkt)),how:"default blend 35/65 (no stack fitted yet - keep the odds logger running)"}; }
+function stake(p,dec){ if(dec==null||dec<=1) return {u:0,note:""}; var kelly=(p*dec-1)/(dec-1); if(kelly<=0) return {u:0,note:""}; var u=Math.min(2,Math.round(kelly*0.25*100*4)/4); return {u:u,note:""}; }
+
+/* ---------------- market: Polymarket (keyless) + manual odds ---------------- */
+var TAGS=get("pm_tags"), PM=[];
+function normN(s){ return String(s||"").toLowerCase().replace(/\b(team|esports|esport|gaming|club|the)\b/g,"").replace(/[^a-z0-9]/g,""); }
+function sameTeam(x,y){ var a=normN(x), b=normN(y); if(!a||!b) return false; if(a===b) return true; if(a.length>=4&&b.length>=4&&(a.indexOf(b)>=0||b.indexOf(a)>=0)) return true; return false; }
+async function pmTags(){ if(TAGS&&TAGS.t&&Date.now()-TAGS.at<7*86400e3) return TAGS.t; var ids={}; var re=/league of legends|\blol\b|\blck\b|\blec\b|\blpl\b|\blcs\b|worlds/i;
+  try{ var r=await fetch("https://gamma-api.polymarket.com/sports"); var j=await r.json(); (j||[]).forEach(function(s){ if(re.test(JSON.stringify(s))){ ["tagId","tag_id","id"].forEach(function(k){ if(s[k]) ids[String(s[k])]=1; }); (s.tags||[]).forEach(function(t){ if(t&&t.id) ids[String(t.id)]=1; }); } }); }catch(e){}
+  if(!Object.keys(ids).length){ try{ for(var off=0;off<5000;off+=500){ var r2=await fetch("https://gamma-api.polymarket.com/tags?limit=500&offset="+off); var tg=await r2.json(); (tg||[]).forEach(function(t){ if(re.test((t.label||"")+" "+(t.slug||""))) ids[String(t.id)]=1; }); if(!tg||tg.length<500) break; } }catch(e){} }
+  TAGS={t:Object.keys(ids),at:Date.now()}; put("pm_tags",TAGS); return TAGS.t; }
+async function pmPrices(){ var out=[]; var tags=await pmTags(); for(var i=0;i<tags.length;i++){ try{ for(var off=0;off<400;off+=100){ var r=await fetch("https://gamma-api.polymarket.com/events?tag_id="+tags[i]+"&closed=false&active=true&limit=100&offset="+off+"&order=startDate&ascending=true"); var evs=await r.json();
+    (evs||[]).forEach(function(ev){ (ev.markets||[]).forEach(function(m){ try{ var outs=JSON.parse(m.outcomes||"[]"), prices=JSON.parse(m.outcomePrices||"[]"); if(outs.length!==2||prices.length!==2) return; var a=outs[0], b=outs[1];
+      if(outs.map(function(o){return o.toLowerCase();}).sort().join()==="no,yes"){ var mm=/will (.+?) (?:win|beat) (?:against |vs\.? )?(.+?)\??$/i.exec(m.question||""); if(!mm) return; a=mm[1].trim(); b=mm[2].trim(); }
+      var p=parseFloat(prices[0]); if(!isFinite(p)||p<=0||p>=1) return; out.push({a:a,b:b,p:p,start:Date.parse(m.gameStartTime||m.startDate||ev.startDate||"")/1000||0,title:ev.title||""}); }catch(e){} }); }); if(!evs||evs.length<100) break; } }catch(e){} }
+  return out; }
+function marketFor(u){ var A=M.teams[u.a], B=M.teams[u.b]; var best=null; PM.forEach(function(m){ if(m.start&&Math.abs(m.start-u.ts)>36*3600) return; var p=null;
+    if((sameTeam(m.a,A.name)||sameTeam(m.a,A.acronym))&&(sameTeam(m.b,B.name)||sameTeam(m.b,B.acronym))) p=m.p; else if((sameTeam(m.a,B.name)||sameTeam(m.a,B.acronym))&&(sameTeam(m.b,A.name)||sameTeam(m.b,A.acronym))) p=1-m.p;
+    if(p!=null&&(!best||Math.abs(m.start-u.ts)<Math.abs(best.start-u.ts))) best={p:p,start:m.start,src:"Polymarket"}; }); return best; }
+
+/* ---------------- price movement from your odds logger ---------------- */
+function moveFor(u){ var A=M.teams[u.a], B=M.teams[u.b]; var best=null;
+  (M.moves||[]).forEach(function(m){ var t=Date.parse(m.date||"")/1000||0; if(t&&Math.abs(t-u.ts)>36*3600) return; var flip=null;
+    if((sameTeam(m.a,A.name)||sameTeam(m.a,A.acronym))&&(sameTeam(m.b,B.name)||sameTeam(m.b,B.acronym))) flip=false;
+    else if((sameTeam(m.a,B.name)||sameTeam(m.a,B.acronym))&&(sameTeam(m.b,A.name)||sameTeam(m.b,A.acronym))) flip=true;
+    if(flip===null) return; var o={open:flip?1-m.open:m.open,now:flip?1-m.now:m.now,hi:flip?1-m.lo:m.hi,lo:flip?1-m.hi:m.lo,n:m.n,vol:m.vol,spark:(m.spark||[]).map(function(x){ return flip?1-x:x; })};
+    if(!best||o.n>best.n) best=o; }); return best; }
+function spark(v,w,h){ if(!v||v.length<2) return ''; var lo=Math.min.apply(null,v), hi=Math.max.apply(null,v); var r=(hi-lo)||0.02; lo-=r*0.15; hi+=r*0.15;
+  var pts=v.map(function(p,i){ return (i/(v.length-1)*w).toFixed(1)+','+(h-(p-lo)/(hi-lo)*h).toFixed(1); }).join(' ');
+  var up=v[v.length-1]>=v[0]; return '<svg width="'+w+'" height="'+h+'" style="vertical-align:middle"><polyline points="'+pts+'" fill="none" stroke="'+(up?'var(--ok)':'var(--bad)')+'" stroke-width="1.5"/></svg>'; }
+function moveHtml(mv,A,B,pModel){ if(!mv) return ''; var d=mv.now-mv.open; var big=Math.abs(d)>=0.04;
+  var toward=d>0?A.name:B.name; var agree=(pModel>=0.5)===(d>0);
+  return '<div class="mk" style="margin-bottom:8px"><span class="k">Market moved</span><span class="'+(big?'some':'')+'">'+pct(mv.open)+' &rarr; <b>'+pct(mv.now)+'</b> on '+A.name+' '+spark(mv.spark,70,16)
+    +'<br><small>'+(Math.abs(d)<0.01?'flat since you first logged it':(big?'<b>'+(d>0?'+':'')+pct(d)+'</b>':(d>0?'+':'')+pct(d))+' toward '+toward)
+    +' &middot; range '+pct(mv.lo)+'-'+pct(mv.hi)+' &middot; '+mv.n+' points'+(mv.vol?' &middot; $'+Math.round(mv.vol).toLocaleString()+' volume':'')
+    +(Math.abs(d)>=0.03?(agree?' &middot; money agrees with the model':' &middot; <b>money is moving against the model</b>'):'')+'</small></span></div>'; }
+
+/* ---------------- render ---------------- */
+var cards={};
+function say(s,c){ var n=document.createElement("span"); if(c) n.className=c; n.textContent=s+"\n"; $("log").appendChild(n); }
+async function refresh(){ $("log").textContent=""; $("go").disabled=true; say("Reading Polymarket League of Legends markets ..."); try{ PM=await pmPrices(); say(PM.length+" market prices found."+(PM.length?"":" Enter bookmaker odds by hand on any match."),PM.length?"ok":""); }catch(e){ say("Market fetch failed: "+e,"bad"); } put("pm_cache",{at:Date.now(),pm:PM}); render(); $("go").disabled=false; }
+$("go").onclick=refresh;
+function lineupHtml(u,side,T){
+  /* the roster panel, but every slot is a dropdown: stand-ins are the norm in LoL and the
+     published lineup is often wrong until an hour before the match. Change a name and the
+     probability is recomputed from the ratings, not looked up. */
+  var r=side==="a"?u.roster_a:u.roster_b, cur=lineupOf(u,side), base=((r&&r.expected)||[]).map(function(p){return p.id;});
+  var pool=poolOf(side==="a"?u.a:u.b).slice(), have={}, i;
+  for(i=0;i<pool.length;i++) have[String(pool[i].id)]=1;
+  for(i=0;i<cur.length;i++) if(!have[String(cur[i])]) pool.unshift({id:cur[i],games:0});
+  var edited=cur.join(",")!==base.join(",");
+  var h='<div><h4>'+T.name+(r&&(r.known||r.any)?'':' <span class="tag new">roster unknown - using last lineup</span>')
+       +(edited?' <span class="tag in">edited</span>':'')+'</h4>';
+  for(i=0;i<cur.length;i++){
+    h+='<div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">'
+      +'<select data-lu data-mid="'+String(u.id).replace(/"/g,'')+'" data-side="'+side+'" data-slot="'+i+'" style="flex:1">';
+    for(var j=0;j<pool.length;j++){
+      var id=pool[j].id, e=pElo(id,null), rk=(M.player_ranks||{})[String(id)], ro=(M.roles||{})[String(id)];
+      h+='<option value="'+id+'"'+(String(id)===String(cur[i])?" selected":"")+'>'
+        +pName(id)+(ro?" ("+ro+")":"")+(e!=null?"  ·  "+Math.round(e)+(rk?"  ·  #"+rk:""):"  ·  unrated")
+        +(pool[j].games<3?"  ·  new":"")+'</option>';
+    }
+    h+='</select></div>';
+  }
+  if(edited) h+='<button class="mini" data-lureset="'+String(u.id).replace(/"/g,'')+'" data-side="'+side+'">reset to expected</button>';
+  return h+'</div>';
+}
+function bindLineups(){
+  var sel=document.querySelectorAll("select[data-lu]"), i;
+  for(i=0;i<sel.length;i++) sel[i].onchange=function(){
+    var mid=this.getAttribute("data-mid"), side=this.getAttribute("data-side"), slot=+this.getAttribute("data-slot");
+    var u=findMatch(mid); if(!u) return;
+    var ov=luGet("lineup:"+mid)||{a:lineupOf(u,"a"),b:lineupOf(u,"b")};
+    ov[side]=ov[side]||lineupOf(u,side); ov[side][slot]=+this.value;
+    luSet("lineup:"+mid,ov); rerender();
+  };
+  var rb=document.querySelectorAll("button[data-lureset]");
+  for(i=0;i<rb.length;i++) rb[i].onclick=function(){
+    var mid=this.getAttribute("data-lureset"), u=findMatch(mid); if(!u) return;
+    var side=this.getAttribute("data-side");
+    var ov=luGet("lineup:"+mid)||{}; var r=side==="a"?u.roster_a:u.roster_b;
+    ov[side]=((r&&r.expected)||[]).map(function(p){return p.id;});
+    luSet("lineup:"+mid,ov); rerender();
+  };
+}
+function findMatch(mid){
+  var all=(M.upcoming||[]).concat(window.__anyMatches||[]);
+  for(var i=0;i<all.length;i++) if(String(all[i].id)===String(mid)) return all[i];
+  return null;
+}
+function rosterHtml(r,T){ var h='<div><h4>'+T.name+(r.known||r.any?'':' <span class="tag new">roster unknown - using last lineup</span>')+'</h4>';
+  r.expected.forEach(function(p){ var tags=''; if(r.in.some(function(x){return x.id===p.id;})) tags+='<span class="tag in">IN</span>'; if(r.new_to_team.some(function(x){return x.id===p.id;})) tags+='<span class="tag new">new to team</span>'; if(p.games<5) tags+='<span class="tag new">'+p.games+' maps</span>';
+    h+='<div class="pl"><b>'+p.name+tags+'</b><span>#'+(p.rank||'-')+'/'+p.of+' &middot; '+Math.round(p.elo)+'</span></div>'; });
+  r.out.forEach(function(p){ h+='<div class="pl" style="opacity:.6"><b>'+p.name+'<span class="tag out">OUT</span></b><span>#'+(p.rank||'-')+' &middot; '+Math.round(p.elo)+'</span></div>'; });
+  var coh=r.games_together>=40?'settled':(r.games_together>=15?'forming':'new lineup'); if(!r.games_together) return h+'<div class="coh">Last-known lineup &middot; no match history for this exact five</div></div>'; h+='<div class="coh">Together: '+r.games_together+' games over '+r.days_together+' days ('+coh+')'+(r.best_lineup_games>r.games_together?' &middot; best-known lineup had '+r.best_lineup_games:'')+'</div></div>'; return h; }
+function rosterRisk(r){ var s=[]; if(r.in.length||r.out.length) s.push((r.in.length||r.out.length)+" change"+((r.in.length||r.out.length)>1?"s":"")+" since last match"); if(r.stand_in) s.push("stand-in with under 5 rated games"); if(r.known&&r.games_together<10) s.push("lineup has only "+r.games_together+" games together"); return s; }
+function cardFor(u,host,rows,tag){ var now=Date.now()/1000; var A=M.teams[u.a], B=M.teams[u.b]; var man=get("odds:"+u.id)||{}; var mk=u.any?null:marketFor(u); var oa=man.a?+man.a:null, ob=man.b?+man.b:null; var pMkt=null, src="";
+    if(oa&&ob&&oa>1&&ob>1){ var qa=1/oa,qb=1/ob; pMkt=qa/(qa+qb); src="your odds"; } else if(mk){ pMkt=mk.p; src=mk.src; oa=oa||+(1/mk.p).toFixed(2); ob=ob||+(1/(1-mk.p)).toFixed(2); }
+    if(pMkt==null&&!CFG.all&&!u.any&&!(u.winner||/finish|past/i.test(u.status||""))) return;
+    var G=gameProb(u,now); var pm=G.p; var pS=seriesProb(pm,u.bo); var bl=blend(pS,pMkt); var p=bl.p; var eA=oa?p-1/oa/((1/oa)+(1/(ob||oa))):null, eB=ob?(1-p)-1/ob/((1/oa)+(1/ob)):null;
+    var pick=null; if(eA!=null&&eB!=null){ pick=eA>=eB?{side:"a",edge:eA,dec:oa,p:p,name:A.name}:{side:"b",edge:eB,dec:ob,p:1-p,name:B.name}; }
+    var risks=rosterRisk(u.roster_a).map(function(s){return A.name+": "+s;}).concat(rosterRisk(u.roster_b).map(function(s){return B.name+": "+s;}));
+    var st=pick?stake(pick.p,pick.dec):{u:0}; var sus=pick&&pick.edge>0.08; if(sus) st.u=Math.min(st.u,0.5); if(risks.length&&pick) st.u=Math.min(st.u,1);
+    var el=document.createElement("section"); el.className="g"; var d=new Date(u.ts*1000);
+    var done=u.winner||/finish|past|cancel/i.test(u.status||""); var right=done&&u.winner?((p>=0.5?u.a:u.b)===u.winner):null;
+    var vcls=done?(right===null?"no":(right?"on":"no")):(!pick?"no":(pick.edge>=0.04&&!sus?"on":(pick.edge>=0.02?"some":"no")));
+    var verdict=done?(u.winner?('<b>'+(u.winner===u.a?A.name:B.name)+' won</b>'+((u.score||[]).length===2&&u.score[0]!=null?' '+u.score[0]+'-'+u.score[1]:'')+' &middot; model had '+(p>=0.5?A.name:B.name)+' '+pct(Math.max(p,1-p))+' &middot; '+(right?'<span style="color:var(--ok)">correct</span>':'<span style="color:var(--bad)">wrong</span>')):'Match finished, no result recorded yet'):
+      !pick?'No market price yet - enter odds below to price it. Model: <b>'+(pS>=0.5?A.name:B.name)+' '+pct(Math.max(pS,1-pS))+'</b>':
+      (pick.edge<0.02?'<b>No bet</b> &middot; '+pick.name+' '+pct(pick.p)+' vs market '+pct(pick.side==="a"?pMkt:1-pMkt)+' &middot; edge '+pct(pick.edge)+' is noise':
+       (sus?'<b>Suspicious edge '+pct(pick.edge)+'</b> on '+pick.name+' @ '+pick.dec.toFixed(2)+' &middot; the model is probably missing something (roster, form, region) &middot; max 0.5u':
+        '<b>Bet '+pick.name+'</b> @ '+pick.dec.toFixed(2)+' &middot; '+pct(pick.p)+' vs market '+pct(pick.side==="a"?pMkt:1-pMkt)+' &middot; edge '+pct(pick.edge)+' &middot; stake '+st.u.toFixed(2)+'u'));
+    el.innerHTML='<div class="t"><span class="a">'+A.name+'</span> v <span class="b">'+B.name+'</span></div><div class="meta">'+u.event+' &middot; Bo'+u.bo+' &middot; tier '+["","S/A","A","B","C","D"][u.tier]+' &middot; '+d.toLocaleDateString([],{weekday:"short",day:"numeric",month:"short"})+' '+d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})+'</div>'
+      +(risks.length?'<div class="warnbox'+(risks.some(function(r){return /stand-in|change/.test(r);})?' red':'')+'">'+risks.join(" &middot; ")+'</div>':'')
+      +'<div class="bar"><i style="width:'+(p*100).toFixed(1)+'%"></i></div><div class="pcts"><span style="color:var(--a)">'+A.name+' '+pct(p)+'</span><span style="color:var(--b)">'+B.name+' '+pct(1-p)+'</span></div>'
+      +'<div class="verdict '+vcls+'">'+verdict+'</div>'+moveHtml(u.any?null:moveFor(u),A,B,p)
+      +(done?'':'<div class="odds"><div><small>'+A.name+' odds</small><input inputmode="decimal" data-id="'+u.id+'" data-s="a" value="'+(man.a||"")+'" placeholder="'+(oa?oa.toFixed(2):"1.85")+'"></div><div><small>'+B.name+' odds</small><input inputmode="decimal" data-id="'+u.id+'" data-s="b" value="'+(man.b||"")+'" placeholder="'+(ob?ob.toFixed(2):"1.95")+'"></div><div><small>'+(src||"no market")+'</small></div></div>')
+      +(G.capped?'<p class="sub" style="margin:6px 0 0">Capped: the raw model said '+pct(G.raw)+' per game. No LoL game deserves more than '+pct(M.cap||0.85)+'.</p>':'')+'<details><summary>Rosters, ranks, cohesion and model factors</summary><div class="ros">'+lineupHtml(u,'a',A)+lineupHtml(u,'b',B)+'</div>'
+      +'<dl class="f"><dt></dt><dd class="hd">'+A.name+'</dd><dd class="hd">'+B.name+'</dd>'
+      +'<dt>Team Elo (entry)</dt><dd>'+Math.round(A.elo)+' ('+Math.round(A.entry||1500)+')</dd><dd>'+Math.round(B.elo)+' ('+Math.round(B.entry||1500)+')</dd>'
+      +'<dt>Lineup Elo (avg of 5)</dt><dd>'+Math.round(mean(u.roster_a.expected.map(function(x){return x.elo;})))+'</dd><dd>'+Math.round(mean(u.roster_b.expected.map(function(x){return x.elo;})))+'</dd>'
+      +'<dt>Schedule strength &middot; tier played</dt><dd>'+Math.round(A.sos||A.elo)+' &middot; '+(A.tier_avg||3).toFixed(1)+'</dd><dd>'+Math.round(B.sos||B.elo)+' &middot; '+(B.tier_avg||3).toFixed(1)+'</dd>'
+      +'<dt>Form (last '+M.form_n+')</dt><dd>'+(A.form||[]).map(function(v){return v?"W":"L";}).join("")+'</dd><dd>'+(B.form||[]).map(function(v){return v?"W":"L";}).join("")+'</dd>'
+      +'<dt>Rest (days)</dt><dd>'+Math.min((now-(A.last_ts||now))/86400,14).toFixed(0)+'</dd><dd>'+Math.min((now-(B.last_ts||now))/86400,14).toFixed(0)+'</dd>'
+      +'<dt>Game prob &rarr; series</dt><dd style="grid-column:span 2">'+A.name+' '+pct(pm)+' per game &rarr; '+pct(pS)+' for the Bo'+u.bo+(pMkt!=null?' &middot; market '+pct(pMkt)+' &middot; '+bl.how:'')+'</dd></dl></details>';
+    host.appendChild(el); cards[u.id]=el; if(rows) rows.push({u:u,A:A,B:B,p:p,pick:pick,st:st,sus:sus});
+    if(u.any) return; var k="pick:"+u.id, old=get(k); if(!old||!old.result) put(k,{id:u.id,a:u.a,b:u.b,an:A.name,bn:B.name,start:u.ts,p_a:p,p_model:pS,p_mkt:pMkt,pick:pick?{side:pick.side,edge:pick.edge,dec:pick.dec,u:st.u,sus:sus}:null,result:old&&old.result||null}); }
+function render(){ window.__inAny=false; var now=Date.now()/1000; $("cards").innerHTML=""; cards={}; var rows=[]; var minT=+CFG.tier;
+  var d0=new Date(); d0.setHours(0,0,0,0); var t0=d0.getTime()/1000, t1=t0+86400, w=CFG.when||"today";
+  var list=(M.upcoming||[]).filter(function(u){ if(!M.teams[u.a]||!M.teams[u.b]||(minT&&u.tier>minT)) return false;
+    if(w==="yday") return u.ts>=t0-86400&&u.ts<t0; if(w==="7d") return u.ts>=t0&&u.ts<t0+7*86400; return u.ts>=t0&&u.ts<t1; })
+    .sort(function(x,y){ return (w==="yday"?y.ts-x.ts:x.ts-y.ts); });
+  list.forEach(function(u){ cardFor(u,$("cards"),rows); });
+  if(!$("cards").children.length) $("cards").innerHTML='<div class="card empty">'+((M.upcoming||[]).length?'No priced matches. Tick "show matches with no market price" or enter odds by hand.':'No upcoming matches in the model - rerun lol_trainer.py and build.py.')+'</div>';
+  bindOdds(); bindLineups(); }
+function rerender(){ if(window.__inAny) renderAny(); else render(); }
+function bindOdds(){ document.querySelectorAll(".odds input").forEach(function(inp){ inp.onchange=function(){ var o=get("odds:"+inp.dataset.id)||{}; o[inp.dataset.s]=inp.value; put("odds:"+inp.dataset.id,o); if(String(inp.dataset.id).indexOf("any:")===0) renderAny(); else render(); }; }); 
+}
+
+/* ---------------- any two ---------------- */
+function rosterOf(t){ var T=M.teams[t];
+  if(T.report&&T.report.expected&&T.report.expected.length){ var r=JSON.parse(JSON.stringify(T.report)); r.any=true; r.known=false; return r; }
+  var last=T.roster||[]; var exp=last.map(function(p){ return {id:p,name:(M.player_names||{})[String(p)]||("player "+p),elo:M.players[String(p)]!=null?M.players[String(p)]:T.elo,rank:(M.player_ranks||{})[String(p)]||null,of:M.players_ranked||0,maps:99,team:t}; });
+  return {expected:exp,in:[],out:[],known:false,any:true,games_together:0,days_together:0,best_lineup_games:0,new_to_team:[],stand_in:false}; }
+(function(){ var ids=Object.keys(M.teams).sort(function(x,y){ return M.teams[x].name.localeCompare(M.teams[y].name); }); var opts=ids.map(function(t){ return '<option value="'+t+'">'+M.teams[t].name+' ('+Math.round(M.teams[t].elo)+')</option>'; }).join("");
+  $("anyA").innerHTML=opts; $("anyB").innerHTML=opts; if(ids.length>1) $("anyB").selectedIndex=1; var saved=get("any_last"); if(saved){ $("anyA").value=saved.a; $("anyB").value=saved.b; $("anyBo").value=saved.bo; $("anyTier").value=saved.tier; } })();
+function renderAny(){ var a=$("anyA").value, b=$("anyB").value; if(!a||!b||a===b){ $("anyCards").innerHTML='<div class="card empty">Pick two different teams.</div>'; return; } var bo=+$("anyBo").value, tier=+$("anyTier").value; put("any_last",{a:a,b:b,bo:bo,tier:tier});
+  var u={id:"any:"+a+":"+b,ts:Date.now()/1000+3600,a:a,b:b,bo:bo,tier:tier,event:"Any two (not on the schedule)",name:"",roster_a:rosterOf(a),roster_b:rosterOf(b),any:true}; window.__anyMatches=[u]; window.__inAny=true; $("anyCards").innerHTML=""; cardFor(u,$("anyCards"),null,"any"); bindOdds(); bindLineups(); }
+$("anyGo").onclick=renderAny;
+
+/* ---------------- scorecard ---------------- */
+function settle(){ var res={}; (M.recent||[]).forEach(function(r){ if(r.winner) res[String(r.id)]=r; }); (M.upcoming||[]).forEach(function(u){ if(u.winner) res[String(u.id)]={id:u.id,winner:u.winner,score:u.score}; }); keys("pick:").forEach(function(k){ var p=get(k); if(!p||p.result) return; var r=res[String(p.id)]; if(!r) return; p.result=r.winner===p.a?"a":(r.winner===p.b?"b":null); p.score=r.score; if(p.result) put(k,p); }); }
+function renderScore(){ settle(); var picks=keys("pick:").map(get).filter(function(p){ return p&&p.result; }); if(!picks.length){ $("score").innerHTML='<div><dt>Nothing settled yet</dt><dd>&mdash;</dd></div>'; return; }
+  var right=picks.filter(function(p){ return (p.p_a>=0.5?"a":"b")===p.result; }).length; var brier=mean(picks.map(function(p){ return Math.pow(p.p_a-(p.result==="a"?1:0),2); })); var bm=picks.filter(function(p){ return p.p_mkt!=null; }); var brierM=mean(bm.map(function(p){ return Math.pow(p.p_mkt-(p.result==="a"?1:0),2); })), brierMod=mean(bm.map(function(p){ return Math.pow(p.p_model-(p.result==="a"?1:0),2); }));
+  var bets=picks.filter(function(p){ return p.pick&&p.pick.u>0; }); var won=bets.filter(function(p){ return p.pick.side===p.result; }); var units=bets.reduce(function(s,p){ return s+(p.pick.side===p.result?p.pick.u*(p.pick.dec-1):-p.pick.u); },0), risked=bets.reduce(function(s,p){ return s+p.pick.u; },0);
+  var big=bets.filter(function(p){ return p.pick.sus; }), bigW=big.filter(function(p){ return p.pick.side===p.result; }).length;
+  $("score").innerHTML='<div><dt>Matches settled</dt><dd>'+picks.length+'</dd></div><div><dt>Favourite correct</dt><dd>'+right+' / '+picks.length+' ('+(100*right/picks.length).toFixed(1)+'%)</dd></div><div><dt>Brier: blended / model / market</dt><dd>'+brier.toFixed(3)+(bm.length?' / '+brierMod.toFixed(3)+' / '+brierM.toFixed(3):'')+'</dd></div>'
+    +(bets.length?'<div><dt>Bets won</dt><dd>'+won.length+' / '+bets.length+'</dd></div><div><dt>Profit</dt><dd>'+(units>=0?'+':'')+units.toFixed(2)+'u on '+risked.toFixed(2)+'u ('+(100*units/Math.max(risked,0.01)).toFixed(1)+'% ROI)</dd></div>':'')
+    +(big.length?'<div><dt>"Suspicious" 8%+ edges won</dt><dd>'+bigW+' / '+big.length+'</dd></div>':''); }
+var pc=get("pm_cache"); if(pc&&Date.now()-pc.at<6*3600e3) PM=pc.pm||[]; render(); renderScore(); if(!PM.length) refresh();
+</script>
+</body>
+</html>
