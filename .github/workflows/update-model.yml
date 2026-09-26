@@ -1,0 +1,54 @@
+name: update-model
+
+# LoL uses PandaScore, so PANDASCORE_TOKEN must exist as a repository secret.
+# Leaguepedia, the backup source, needs no key.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 11 * * *"     # 11:00 UTC, staggered clear of the Dota (05:00) and CS2 (08:00) runs
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install
+        run: pip install requests numpy
+
+      - name: Restore the game cache
+        uses: actions/cache@v4
+        with:
+          path: cache_lol
+          key: lol-cache-${{ github.run_id }}
+          restore-keys: |
+            lol-cache-
+
+      - name: Train
+        env:
+          PANDASCORE_TOKEN: ${{ secrets.PANDASCORE_TOKEN }}
+        run: python lol_trainer.py
+
+      - name: Build model.js
+        env:
+          MODEL_URL: ${{ secrets.MODEL_URL }}
+        run: python build.py
+
+      - name: Commit
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add model.js model.json
+          git diff --staged --quiet || git commit -m "model $(date -u +%Y-%m-%d)"
+          git push
+
+      - name: Purge the CDN
+        run: curl -sS "https://purge.jsdelivr.net/gh/${{ github.repository }}@main/model.js" || true
