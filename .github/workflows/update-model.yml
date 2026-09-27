@@ -6,7 +6,7 @@ name: update-model
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 11 * * *"     # 11:00 UTC, staggered clear of the Dota (05:00) and CS2 (08:00) runs
+    - cron: "30 4,11 * * *"     # 11:00 UTC, staggered clear of the Dota (05:00) and CS2 (08:00) runs
 
 permissions:
   contents: write
