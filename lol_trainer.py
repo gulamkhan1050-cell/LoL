@@ -116,11 +116,66 @@ def fetch_past_matches(months):
             break
         page += 1
         time.sleep(0.7)   # free plan: 1000 req/hour
+    check_months(have, since, "/lol/matches/past")
     matches = [m for m in have.values() if m["begin_at"] >= since.isoformat()]
     matches.sort(key=lambda m: (m["begin_at"], m["id"]))
     json.dump(matches, open(f, "w", encoding="utf-8"))
     print(f"downloaded {added} new, using {len(matches)} matches since {since:%Y-%m-%d}")
     return matches
+
+
+def ps_total(path, params):
+    """How many results PandaScore has for a query (its X-Total header), or None."""
+    try:
+        r = requests.get(f"{API}{path}", params=dict(params, per_page=1),
+                         headers={"Authorization": f"Bearer {TOKEN}", "Accept": "application/json"}, timeout=60)
+        return int(r.headers["X-Total"]) if r.ok and r.headers.get("X-Total") else None
+    except Exception:
+        return None
+
+
+def check_months(have, since, path):
+    """Is the data complete, old and new? Month by month, PandaScore's count of finished matches is compared with the
+    cache; a month with matches missing (a run cut short by the quota, or older than the cache) is downloaded again.
+    Matches skipped on purpose (forfeits, not two teams) are remembered, so a complete month costs one request."""
+    mf = os.path.join(CACHE_DIR, "months.json")
+    seen = json.load(open(mf, encoding="utf-8")) if os.path.exists(mf) else {}
+    now = datetime.now(timezone.utc); start = since; fixed = 0; lines = []
+    fmt = lambda d: d.strftime("%Y-%m-%dT%H:%M:%SZ")
+    while start < now:
+        end = min(start + timedelta(days=30), now)
+        a, b = fmt(start), fmt(end)
+        q = {"range[begin_at]": f"{a},{b}", "filter[status]": "finished"}
+        total = ps_total(path, q)
+        cached = sum(1 for m in have.values() if a <= m["begin_at"] < b)
+        skipped = (seen.get(a[:10]) or {}).get("skipped", 0)
+        if total is None:
+            status = "no answer (checked next run)"
+        elif cached + skipped >= total:
+            status = "complete"
+        else:
+            got, skipped, page = 0, 0, 1
+            try:
+                while True:
+                    rows = ps_get(path, dict(q, sort="-begin_at", per_page=100, page=page))
+                    for m in rows or []:
+                        if m.get("forfeit") or len(m.get("opponents") or []) != 2:
+                            skipped += 1; continue
+                        if m["id"] not in have: got += 1
+                        have[m["id"]] = slim(m)
+                    if not rows or len(rows) < 100: break
+                    page += 1; time.sleep(0.7)
+            except (Exception, SystemExit) as e:
+                lines.append(f"  {a[:10]}  PandaScore {total:5}  had {cached:5}  stopped ({e}); the next run carries on")
+                break
+            seen[a[:10]] = {"total": total, "skipped": skipped}
+            fixed += got
+            status = f"was missing {got}, downloaded" if got else "complete"
+        lines.append(f"  {a[:10]}  PandaScore {total if total is not None else '?':>5}  cached {cached:5}  {status}")
+        start = end
+    json.dump(seen, open(mf, "w", encoding="utf-8"))
+    print("data check, month by month (finished matches):"); print("\n".join(lines))
+    print(f"data check: {fixed} missing matches downloaded" if fixed else "data check: nothing missing")
 
 
 def slim(m):
@@ -181,7 +236,14 @@ def fetch_rosters(tournament_ids):
     have = json.load(open(f, encoding="utf-8")) if os.path.exists(f) else {}
     if os.path.exists(pf): PNAMES.update({int(k): v for k, v in json.load(open(pf, encoding="utf-8")).items()})
     if have and not PNAMES: print("  roster cache has no player names yet - refetching once so the app can show names"); have = {}
-    todo = [t for t in tournament_ids if t and str(t) not in have]
+    # an empty roster (the download failed or PandaScore had none yet) is tried again, up to 3 more times
+    tf = os.path.join(CACHE_DIR, "roster_retries.json")
+    tries = json.load(open(tf, encoding="utf-8")) if os.path.exists(tf) else {}
+    todo = [t for t in tournament_ids if t and (str(t) not in have or (not have[str(t)] and tries.get(str(t), 0) < 3))]
+    for t in todo:
+        if str(t) in have:
+            tries[str(t)] = tries.get(str(t), 0) + 1
+    json.dump(tries, open(tf, "w", encoding="utf-8"))
     print(f"rosters: {len(have)} cached, {len(todo)} to fetch")
     for i, tid in enumerate(todo):
         try:
